@@ -40,6 +40,8 @@ pip install autograd
 pip install wandb
 pip install synthcity
 ````
+This repository requires [PiShield](https://github.com/mihaela-stoian/PiShield).
+
 
 ## Examples
 The Faulty Steel Plates (Faults) dataset is available [here](https://www.kaggle.com/datasets/uciml/faulty-steel-plates).

@@ -1,28 +1,22 @@
-import torch
-import wandb
-import pandas as pd
-import numpy as np
 import pickle as pkl
 
+import numpy as np
+import pandas as pd
+import torch
+import wandb
+from pishield.linear_requirements.parser import parse_constraints_file
 from sdmetrics.single_table import MulticlassMLPClassifier, MulticlassDecisionTreeClassifier, LinearRegression, \
     MLPRegressor
-
-#from evaluation.synthcity import eval_synthcity
-#from evaluation.sdv import eval_sdv
-from evaluation.constraints import constraint_satisfaction
-from evaluation.visual import feature_correlation
-from utils import metrics_to_wandb
-
-#from synthcity.metrics import eval_detection, eval_performance, eval_statistical
-from evaluation import stasy_utility_detection, synthcity_quality
 from sdv.metrics.tabular import LogisticDetection, SVCDetection, BinaryAdaBoostClassifier, BinaryMLPClassifier, \
     BinaryDecisionTreeClassifier
 from synthcity.plugins.core.dataloader import GenericDataLoader
 
-from constraints_code.compute_sets_of_constraints import compute_sets_of_constraints
-from constraints_code.correct_predictions import check_all_constraints_sat
-from constraints_code.parser import parse_constraints_file
-from constraints_code.feature_orderings import set_ordering
+# from synthcity.metrics import eval_detection, eval_performance, eval_statistical
+from evaluation import stasy_utility_detection, synthcity_quality
+# from evaluation.synthcity import eval_synthcity
+# from evaluation.sdv import eval_sdv
+from evaluation.constraints import constraint_satisfaction
+from evaluation.visual import feature_correlation
 
 
 def eval_quality(real_data, generated_data_list, columns, target_column):

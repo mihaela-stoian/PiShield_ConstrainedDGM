@@ -5,11 +5,10 @@ import numpy as np
 import pandas as pd
 import torch
 import wandb
-from constraints_code.compute_sets_of_constraints import compute_sets_of_constraints
-from constraints_code.correct_predictions import correct_preds, check_all_constraints_sat
-from constraints_code.feature_orderings import set_ordering
-from constraints_code.parser import parse_constraints_file
-from evaluation.eval import constraints_sat_check, sdv_eval_synthetic_data, eval_synthetic_data
+from pishield.linear_requirements.correct_predictions import check_all_constraints_sat
+from pishield.shield_layer import build_shield_layer
+
+from evaluation.eval import constraints_sat_check, eval_synthetic_data
 from utils import read_csv, set_seed, _load_json
 
 warnings.filterwarnings(action='ignore')
@@ -44,15 +43,16 @@ def prepare_gen_data(args, data, roundable_idx, round_digits, columns, X_train):
     if type(data) == list:
         data = {"train": data[0], "val": data[1], "test": data[2]}
 
-    ordering, constraints = parse_constraints_file(args.constraints_file)
-
     model_type = args.model_type
     if '_out' in model_type:
         model_type = model_type.lower()[:-4]
 
     print('MODEL TYPE FOR SETTING ORDERING', model_type)
-    ordering = set_ordering(args.use_case, ordering, args.label_ordering, model_type)
-    sets_of_constr = compute_sets_of_constraints(ordering, constraints, verbose=True)
+
+    num_dim = X_train.shape[-1]
+    CL = build_shield_layer(num_variables=num_dim, requirements_filepath=args.constraints_file,
+                                 ordering_choice=args.label_ordering)
+
 
     gen_data = {'train':[], 'val':[], 'test':[]}
     unrounded_gen_data = {'train':[], 'val':[], 'test':[]}
@@ -68,8 +68,8 @@ def prepare_gen_data(args, data, roundable_idx, round_digits, columns, X_train):
             # constraint the output:
             if args.version != 'unconstrained' or args.postprocessing:
                 sampled_data = torch.tensor(sampled_data)
-                sampled_data = correct_preds(sampled_data, ordering, sets_of_constr)
-                sat = check_all_constraints_sat(sampled_data, constraints, error_raise=False)
+                sampled_data = CL(sampled_data)
+                sat = check_all_constraints_sat(sampled_data, CL.constraints, error_raise=False)
                 print(f'Corrected sampled_data for {part}, round {j}', 'sat:', sat)
 
             sampled_data = pd.DataFrame(sampled_data, columns=columns)

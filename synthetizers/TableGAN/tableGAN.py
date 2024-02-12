@@ -2,7 +2,7 @@
 # coding: utf-8
 
 ### Commit 37a217f
-#https://github.com/sdv-dev/SDGym/commit/37a217f9bbd5ec7cd09b33b9c067566019caceb9
+# https://github.com/sdv-dev/SDGym/commit/37a217f9bbd5ec7cd09b33b9c067566019caceb9
 import numpy as np
 import torch
 import wandb
@@ -13,18 +13,11 @@ from torch.optim import Adam, RMSprop, SGD
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
 
-from synthetizers.TableGAN.base_tableGAN import LegacySingleTableBaseline
-# from data_processors.tableGAN.utils import TableganTransformer
 from data_processors.wgan.tab_scaler import TabScaler
-# from synthetizers.manual_url_constrained_layer import get_constr_out
-from constraints_code.compute_sets_of_constraints import compute_sets_of_constraints
-from constraints_code.correct_predictions import correct_preds, check_all_constraints_sat
-from constraints_code.parser import parse_constraints_file
-from constraints_code.feature_orderings import set_ordering
+from synthetizers.TableGAN.base_tableGAN import LegacySingleTableBaseline
 
-
-
-
+from pishield.linear_requirements.correct_predictions import check_all_constraints_sat
+from pishield.shield_layer import build_shield_layer
 
 
 class Discriminator(Module):
@@ -135,7 +128,7 @@ def weights_init(m):
         init.normal_(m.weight.data, 1.0, 0.02)
         init.constant_(m.bias.data, 0)
 
-def _apply_constrained(use_case, version, fake, side, transformer, col_len, sets_of_constr, ordering, constraints):
+def _apply_constrained(use_case, version, fake, side, transformer, col_len, CL):
     if version == "constrained":
         fake_re = fake.reshape(-1, side * side)
         fake_re = fake_re[:, :col_len]
@@ -143,10 +136,14 @@ def _apply_constrained(use_case, version, fake, side, transformer, col_len, sets
         # cons = get_constr_out(inverse)
         # if use_case == 'botnet':
         #     inverse = inverse.clamp(-1000, 1000)
-        cons = correct_preds(inverse, ordering, sets_of_constr)
+        # uncons_sat = check_all_constraints_sat(inverse, CL.constraints)
+        # print(uncons_sat)
+        cons = CL(inverse)
         if use_case != 'botnet':
-            sat = check_all_constraints_sat(cons, constraints)
-        # check_all_constraints_sat(cons_layer, self.constraints)
+
+            sat = check_all_constraints_sat(cons, CL.constraints)
+            # print(sat)
+        # check_all_constraints_sat(cons_layer, CL.constraints)
         fake_cons = transformer.transform(cons)
 
         if side * side > len(fake_cons[0]):
@@ -186,7 +183,6 @@ class TableGAN(LegacySingleTableBaseline):
 
     def fit(self, args, train_data, discrete_columns_idx):
         self.args = args
-        self.constraints, self.sets_of_constr, self.ordering = self.get_sets_constraints(args.label_ordering, args.constraints_file)
 
         sides = [4, 8, 16, 24, 32]
         for i in sides:
@@ -230,6 +226,9 @@ class TableGAN(LegacySingleTableBaseline):
         else:
             pass
 
+        num_dim = train_data.shape[-1]
+        self.CL = build_shield_layer(num_variables=num_dim, requirements_filepath=args.constraints_file, ordering_choice=args.label_ordering)
+
         self.generator.apply(weights_init)
         discriminator.apply(weights_init)
         classifier.apply(weights_init)
@@ -241,7 +240,8 @@ class TableGAN(LegacySingleTableBaseline):
                 real = data[0].to(self.device)
                 noise = torch.randn(self.batch_size, self.random_dim, 1, 1, device=self.device)
                 fake = self.generator(noise)
-                fake_cons = _apply_constrained(self.args.use_case, self.version, fake, self.side, self.transformer, train_data.shape[1], self.sets_of_constr, self.ordering, self.constraints)
+                fake_cons = _apply_constrained(self.args.use_case, self.version, fake, self.side, self.transformer,
+                                               train_data.shape[1], self.CL)
                 optimizerD.zero_grad()
                 y_real = discriminator(real)
                 y_fake = discriminator(fake_cons)
@@ -252,7 +252,8 @@ class TableGAN(LegacySingleTableBaseline):
 
                 noise = torch.randn(self.batch_size, self.random_dim, 1, 1, device=self.device)
                 fake = self.generator(noise)
-                fake_cons = _apply_constrained(self.args.use_case, self.version, fake, self.side, self.transformer, train_data.shape[1], self.sets_of_constr, self.ordering, self.constraints)
+                fake_cons = _apply_constrained(self.args.use_case, self.version, fake, self.side, self.transformer,
+                                               train_data.shape[1], self.CL)
                 optimizerG.zero_grad()
                 y_fake = discriminator(fake_cons)
                 loss_g = -(torch.log(y_fake + 1e-4).mean())
@@ -265,7 +266,8 @@ class TableGAN(LegacySingleTableBaseline):
 
                 noise = torch.randn(self.batch_size, self.random_dim, 1, 1, device=self.device)
                 fake = self.generator(noise)
-                fake_cons = _apply_constrained(self.args.use_case, self.version, fake, self.side, self.transformer, train_data.shape[1], self.sets_of_constr, self.ordering, self.constraints)
+                fake_cons = _apply_constrained(self.args.use_case, self.version, fake, self.side, self.transformer,
+                                               train_data.shape[1], self.CL)
 
                 if classifier.valid:
                     real_pre, real_label = classifier(real)
@@ -330,7 +332,7 @@ class TableGAN(LegacySingleTableBaseline):
                 # inverse = get_constr_out(inverse)
                 if self.args.use_case == 'botnet':
                     inverse = inverse.clamp(-1000, 1000)  # TODO: for botnet?
-                inverse = correct_preds(inverse, self.ordering, self.sets_of_constr)
+                inverse = self.CL(inverse)
 
             data.append(inverse.detach().cpu().numpy())
             uncons_data.append(unconstrained_output.detach().cpu().numpy())
@@ -338,12 +340,3 @@ class TableGAN(LegacySingleTableBaseline):
         data = np.concatenate(data, axis=0)[:n,:col_len]
         uncons_data = np.concatenate(uncons_data, axis=0)[:n,:col_len]
         return data, uncons_data
-
-    def get_sets_constraints(self, label_ordering_choice, constraints_file):
-        ordering, constraints = parse_constraints_file(constraints_file)
-
-        # set ordering
-        ordering = set_ordering(self.args.use_case, ordering, label_ordering_choice, 'tablegan')
-
-        sets_of_constr = compute_sets_of_constraints(ordering, constraints, verbose=True)
-        return constraints, sets_of_constr, ordering

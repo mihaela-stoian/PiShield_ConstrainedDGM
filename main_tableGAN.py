@@ -176,10 +176,10 @@ def main():
 
             # if args.seed < 3:
             constraints_sat_check(args, real_data, unrounded_generated_data, log_wandb=True)
-            sdv_eval_synthetic_data(args, args.use_case, real_data, generated_data, columns,
-                                    problem_type=dataset_info["problem_type"],
-                                    target_utility=dataset_info["target_col"], target_detection="", log_wandb=True,
-                                    wandb_run=wandb_run)
+            # sdv_eval_synthetic_data(args, args.use_case, real_data, generated_data, columns,
+            #                         problem_type=dataset_info["problem_type"],
+            #                         target_utility=dataset_info["target_col"], target_detection="", log_wandb=True,
+            #                         wandb_run=wandb_run)
             print('Using evaluators with the following specs', dataset_info["problem_type"], dataset_info["target_size"],
                 dataset_info["target_col"])
             eval_synthetic_data(args, args.use_case, real_data, generated_data, columns,

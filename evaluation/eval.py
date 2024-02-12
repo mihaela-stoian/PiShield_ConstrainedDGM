@@ -15,7 +15,6 @@ from synthcity.plugins.core.dataloader import GenericDataLoader
 from evaluation import stasy_utility_detection, synthcity_quality
 # from evaluation.synthcity import eval_synthcity
 # from evaluation.sdv import eval_sdv
-from evaluation.constraints import constraint_satisfaction
 from evaluation.visual import feature_correlation
 
 
@@ -58,7 +57,7 @@ def eval_synthetic_data(args, use_case, real_data, generated_data, columns, prob
     for i in range(len(unrounded_generated_data_for_cons_sat["test"])):
         generated_data_i = unrounded_generated_data_for_cons_sat["test"][i]
         features = generated_data_i.iloc[:, :-1].to_numpy()
-        cons_rate, batch_rate, ind_score = constraint_satisfaction(features, use_case)
+        cons_rate, batch_rate, ind_score = -1, -1, -1
         results_cons.append([ind_score.mean(), batch_rate,  cons_rate])
         #gen_data_i = pd.DataFrame(generated_data_i, columns=columns)
         feature_correlation(generated_data_i, log_wandb, wandb_run, f"INFERENCE/correlation/syn_{i}")

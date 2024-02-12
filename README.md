@@ -1,7 +1,13 @@
 
 # Constrained DGMs
 
-This repository contains the code for the constraint layer proposed in our paper titled "**How Realistic Is Your Synthetic Data? Constraining Deep Generative Models for Tabular Data**", which was accepted for publication at ICLR 2024. 
+This repository is built on top of the [repository](https://github.com/mihaela-stoian/ConstrainedDGM) containing the code for the constraint layer proposed in our paper titled "**How Realistic Is Your Synthetic Data? Constraining Deep Generative Models for Tabular Data**", which was accepted for publication at ICLR 2024. 
+
+**Differently from the previous repository, it uses [PiShield](https://github.com/mihaela-stoian/PiShield) for easily integrating the constraint layer into the neural network models.**
+To demonstrate how PiShield can be used in the tabular data generation setting, we integrated it into the TableGAN model [1]. 
+
+
+## Description
 
 Deep Generative Models (DGMs) have been shown to be powerful tools for generating tabular data. 
 However, they fail to comply with constraints that encode essential background knowledge on the problem at hand, which is needed to generate realistic synthetic data.
@@ -22,7 +28,6 @@ If you use this paper, please cite the following:
 }
 ```
 
-As of now, the models included in this repository (on top of which we applied our constraint layer) are: CTGAN [1], TVAE [1], and TableGAN [2]. 
 
 
 ## Dependencies
@@ -59,45 +64,8 @@ python main_tableGAN.py ${use_case} --seed=$seed --epochs=$eps --optimiser=${def
 # constrained
 python main_tableGAN.py ${use_case} --seed=$seed --epochs=$eps --optimiser=${default_optimiser} --lr=${default_lr} --batch_size=${default_bs} --random_dim=${default_random_dim} --version="constrained" --label_ordering="corr"
 ```
-### CTGAN
-```
-
-use_case="url"
-eps=150
-default_optimiser="adam"
-default_lr=0.0002
-default_bs=500
-default_decay=0.000001
-default_pac=1
-seed=0
-
-# unconstrained
-python main_ctgan.py  ${use_case} --wandb_project=$wandbp --seed=$seed --epochs=$eps --optimiser=${default_optimiser} --generator_lr=${default_lr} --discriminator_lr=${default_lr} --batch_size=${default_bs} --generator_decay=${default_decay} --discriminator_decay=${default_decay} --pac=${default_pac}
-
-# constrained
-python main_ctgan.py  ${use_case} --wandb_project=$wandbp --seed=$seed --epochs=$eps --optimiser=${default_optimiser} --generator_lr=${default_lr} --discriminator_lr=${default_lr} --batch_size=${default_bs} --generator_decay=${default_decay} --discriminator_decay=${default_decay} --pac=${default_pac} --version="constrained" --label_ordering="random"
-```
-
-### TVAE
-```
-use_case="url"
-seed=0
-eps=150
-bs=70
-l2scale=0.0002
-loss_factor=2
-
-# unconstrained
-python main_tvae.py  ${use_case} --wandb_project=$wandbp --seed=$seed --epochs=$eps  --batch_size=${bs} --l2scale=${l2scale} --loss_factor=${loss_factor}
-
-# constrained
-python main_tvae.py  ${use_case} --wandb_project=$wandbp --seed=$seed --epochs=$eps  --batch_size=${bs} --l2scale=${l2scale} --loss_factor=${loss_factor} --version="constrained" --label_ordering="random"
-
-```
 
 **References**
 
-[1] Lei Xu, Maria Skoularidou, Alfredo Cuesta-Infante, and Kalyan Veeramachaneni. Modeling tabular data using conditional GAN. In Proceedings of Neural Information Processing Systems, 2019.
-
-[2] Noseong Park, Mahmoud Mohammadi, Kshitij Gorde, Sushil Jajodia, Hongkyu Park, and Young-min Kim. Data synthesis based on generative adversarial networks. Proceedings of the VLDB
+[1] Noseong Park, Mahmoud Mohammadi, Kshitij Gorde, Sushil Jajodia, Hongkyu Park, and Young-min Kim. Data synthesis based on generative adversarial networks. Proceedings of the VLDB
 Endowment, 11, 2018.
